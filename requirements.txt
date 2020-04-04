@@ -1,0 +1,3 @@
+https://github.com/turicas/rows/archive/develop.zip#egg=rows
+xlrd
+xlwt
