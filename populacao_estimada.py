@@ -58,7 +58,7 @@ def convert_file(input_filename, output_filename):
                 "state_ibge_code": row.cod_uf,
                 "city_ibge_code": f"{row.cod_uf}{row.cod_munic}",
                 "city": row.nome_do_municipio,
-                "estimated_population_2019": row.populacao_estimada,
+                "estimated_population": row.populacao_estimada,
             }
         )
     result.sort(key=lambda row: (row["state"], to_ascii(row["city"])))

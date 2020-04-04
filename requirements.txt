@@ -1,3 +1,4 @@
 https://github.com/turicas/rows/archive/develop.zip#egg=rows
+requests  # It's actually not needed, it's a dependency bug on rows
 xlrd
 xlwt
