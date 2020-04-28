@@ -57,7 +57,7 @@ def convert_file(input_filename, output_filename):
                 "state": row.uf,
                 "state_ibge_code": row.cod_uf,
                 "city_ibge_code": f"{row.cod_uf}{row.cod_munic}",
-                "city": row.nome_do_municipio,
+                "city": row.nome_do_municipio.replace("*", "").strip(),
                 "estimated_population": row.populacao_estimada,
             }
         )
