@@ -22,7 +22,10 @@ def to_ascii(text):
     return normalize("NFKD", text).encode("ascii", errors="ignore").decode("ascii")
 
 
-def download_ftp_file(url, output_filename):
+def download_ftp_file(url, output_filename, skip_if_downloaded=False):
+    if skip_if_downloaded and Path(output_filename).exists():
+        return
+
     parsed = urlparse(url)
     host = parsed.netloc
     path = str(Path(parsed.path).parent)
@@ -75,9 +78,18 @@ if __name__ == "__main__":
         if not path.exists():
             path.mkdir(parents=True)
 
-    url = "ftp://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2019/estimativa_TCU_2019_20200116.xls"
-    download_filename = DOWNLOAD_PATH / "estimativa_TCU_2019_20200116.xls"
-    output_filename = OUTPUT_PATH / "populacao-estimada-2019.csv"
+    urls = {
+        "2019-09-16": "ftp://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2019/estimativa_dou_2019.xls",
+        "2020-06-22": "ftp://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2019/estimativa_TCU_2019_20200622.xls",
+        "2020-07-20": "ftp://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2019/POP2019_20072020.xls",
+        "2020-08-27": "ftp://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2020/estimativa_dou_2020.xls",
+    }
+    for date, url in urls.items():
+        download_filename = DOWNLOAD_PATH / Path(url).name
+        output_filename = OUTPUT_PATH / f"populacao-estimada-{date}.csv"
 
-    download_ftp_file(url, download_filename)
-    convert_file(download_filename, output_filename)
+        print(f"Downloading {url} to {download_filename}")
+        download_ftp_file(url, download_filename, skip_if_downloaded=True)
+
+        print(f"  Converting to {output_filename}")
+        convert_file(download_filename, output_filename)
