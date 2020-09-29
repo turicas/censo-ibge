@@ -86,7 +86,7 @@ if __name__ == "__main__":
     }
     for date, url in urls.items():
         download_filename = DOWNLOAD_PATH / Path(url).name
-        output_filename = OUTPUT_PATH / f"populacao-estimada-{date}.csv"
+        output_filename = OUTPUT_PATH / f"populacao-{date}.csv"
 
         print(f"Downloading {url} to {download_filename}")
         download_ftp_file(url, download_filename, skip_if_downloaded=True)

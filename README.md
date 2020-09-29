@@ -29,7 +29,7 @@ mantido voluntariamente.
 ### População Estimada
 
 População por município estimada pelo IBGE, disponível em diversas datas. Veja
-o schema em `schema/populacao-estimada.csv`.
+o schema em `schema/populacao.csv`.
 
 
 ### Perfil dos Municípios
