@@ -79,17 +79,22 @@ if __name__ == "__main__":
             path.mkdir(parents=True)
 
     urls = {
-        "2019-09-16": "ftp://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2019/estimativa_dou_2019.xls",
-        "2020-06-22": "ftp://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2019/estimativa_TCU_2019_20200622.xls",
-        "2020-07-20": "ftp://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2019/POP2019_20072020.xls",
-        "2020-08-27": "ftp://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2020/estimativa_dou_2020.xls",
+        2019: {
+            "2019-09-16": "ftp://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2019/estimativa_dou_2019.xls",
+            "2020-06-22": "ftp://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2019/estimativa_TCU_2019_20200622.xls",
+            "2020-07-20": "ftp://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2019/POP2019_20072020.xls",
+        },
+        2020: {
+            "2020-08-27": "ftp://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2020/estimativa_dou_2020.xls",
+        },
     }
-    for date, url in urls.items():
-        download_filename = DOWNLOAD_PATH / Path(url).name
-        output_filename = OUTPUT_PATH / f"populacao-{date}.csv"
+    for year, year_data in urls.items():
+        for release_date, url in year_data.items():
+            download_filename = DOWNLOAD_PATH / Path(url).name
+            output_filename = OUTPUT_PATH / f"populacao-estimada-{year}_{release_date}.csv"
 
-        print(f"Downloading {url} to {download_filename}")
-        download_ftp_file(url, download_filename, skip_if_downloaded=True)
+            print(f"Downloading {url} to {download_filename}")
+            download_ftp_file(url, download_filename, skip_if_downloaded=True)
 
-        print(f"  Converting to {output_filename}")
-        convert_file(download_filename, output_filename)
+            print(f"  Converting to {output_filename}")
+            convert_file(download_filename, output_filename)
