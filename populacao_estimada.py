@@ -4,6 +4,7 @@ from unicodedata import normalize
 from urllib.parse import urlparse
 
 import rows
+import xlrd
 
 
 class CustomIntegerField(rows.fields.IntegerField):
@@ -40,10 +41,16 @@ def download_ftp_file(url, output_filename, skip_if_downloaded=False):
 
 
 def convert_file(input_filename, output_filename):
+    book = xlrd.open_workbook(input_filename, formatting_info=True)
+    sheet = book.sheet_by_name("Municípios")
+    column_uf = sheet.col(0)
+    for start_row, cell in enumerate(column_uf):
+        if str(cell.value or "").strip() == "UF":
+            break
     table = rows.import_from_xls(
         input_filename,
         sheet_name="Municípios",
-        start_row=1,
+        start_row=start_row,
         force_types={
             "cod_uf": rows.fields.TextField,
             "cod_munic": rows.fields.TextField,
@@ -79,13 +86,42 @@ if __name__ == "__main__":
             path.mkdir(parents=True)
 
     urls = {
+        2012: {
+            "2017-06-14": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2012/estimativa_2012_TCU_20170614.xls",
+        },
+        2013: {
+            "2017-06-14": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2013/estimativa_2013_TCU_20170614.xls",
+        },
+        2014: {
+            "2017-06-14": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2014/estimativa_TCU_2014_20170614.xls",
+        },
+        2015: {
+            "2017-06-14": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2015/estimativa_TCU_2015_20170614.xls",
+            "2016-08-17": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2015/estimativa_dou_2015_20150915.xls",
+        },
+        2016: {
+            "2017-07-14": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2016/estimativa_TCU_2016_20170614.xls",
+        },
+        2017: {
+            "2022-09-05": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2017/POP2017_20220905.xls",
+            "2017-08-30": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2017/estimativa_dou_2017.xls",
+        },
+        2018: {
+            "2022-09-05": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2018/POP2018_20220905.xls",
+            "2019-09-10": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2018/estimativa_dou_2018_20181019.xls",
+        },
         2019: {
-            "2019-09-16": "ftp://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2019/estimativa_dou_2019.xls",
-            "2020-06-22": "ftp://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2019/estimativa_TCU_2019_20200622.xls",
-            "2020-07-20": "ftp://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2019/POP2019_20072020.xls",
+            "2022-09-05": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2019/POP2019_20220905.xls",
+            "2019-09-17": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2019/estimativa_dou_2019.xls",
         },
         2020: {
-            "2020-08-27": "ftp://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2020/estimativa_dou_2020.xls",
+            "2022-07-11": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2020/POP2020_20220711.xls",
+            "2022-09-05": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2020/POP2020_20220905.xls",
+            "2020-08-27": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2020/estimativa_dou_2020.xls",
+        },
+        2021: {
+            "2023-07-10": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2021/POP2021_20230710.xls",
+            "2021-08-27": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2021/estimativa_dou_2021.xls",
         },
     }
     for year, year_data in urls.items():
