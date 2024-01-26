@@ -1,10 +1,36 @@
 from ftplib import FTP
 from pathlib import Path
 from unicodedata import normalize
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
+import requests
 import rows
 import xlrd
+from lxml.html import document_fromstring, tostring
+from tqdm import tqdm
+
+
+def list_xls_urls():
+    session = requests.Session()
+    urls = {}
+    for ano in tqdm(range(2018, 2022)):
+        url = f"https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_{ano}/"
+        urls[ano] = {}
+        response = session.get(url)
+        tree = document_fromstring(response.text)
+        for tr in tree.xpath("//table//tr"):
+            if not tr.xpath(".//a[contains(@href, '.xls')]"):
+                continue
+            tds = tr.xpath(".//td")
+            filename, date, size = [
+                tds[1].xpath(".//a/@href")[0],
+                tds[2].xpath(".//text()")[0],
+                tds[3].xpath(".//text()")[0],
+            ]
+            if filename.startswith("serie") or not filename.endswith(".xls"):
+                continue
+            urls[ano][date.split()[0]] = urljoin(url, filename)
+    return urls
 
 
 class CustomIntegerField(rows.fields.IntegerField):
@@ -85,6 +111,7 @@ if __name__ == "__main__":
         if not path.exists():
             path.mkdir(parents=True)
 
+    # This dict must be updated using `list_xls_urls()`
     urls = {
         2012: {
             "2017-06-14": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2012/estimativa_2012_TCU_20170614.xls",
