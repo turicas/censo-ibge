@@ -10,27 +10,51 @@ from lxml.html import document_fromstring, tostring
 from tqdm import tqdm
 
 
-def list_xls_urls():
-    session = requests.Session()
-    urls = {}
-    for ano in tqdm(range(2018, 2022)):
-        url = f"https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_{ano}/"
-        urls[ano] = {}
-        response = session.get(url)
+class IbgeScraper:
+
+    def __init__(self):
+        self.session = requests.Session()
+
+    def parse_html_table_list(self, url):
+        response = self.session.get(url)
         tree = document_fromstring(response.text)
+        table = []
         for tr in tree.xpath("//table//tr"):
-            if not tr.xpath(".//a[contains(@href, '.xls')]"):
-                continue
-            tds = tr.xpath(".//td")
-            filename, date, size = [
-                tds[1].xpath(".//a/@href")[0],
-                tds[2].xpath(".//text()")[0],
-                tds[3].xpath(".//text()")[0],
+            data = [
+                (
+                    " ".join([item.strip() for item in td.xpath(".//text()") if item.strip()]),
+                    td.xpath(".//a/@href"),
+                )
+                for td in tr.xpath(".//td")
             ]
-            if filename.startswith("serie") or not filename.endswith(".xls"):
+            if not data:
                 continue
-            urls[ano][date.split()[0]] = urljoin(url, filename)
-    return urls
+            if data[0] == ('', []):
+                data = data[1:]
+            table.append(data)
+        header = "url date size _".split()
+        for row in table[1:]:
+            row = (row[0][1][0], row[1][0].split()[0], row[2][0], row[3][0])
+            row = dict(zip(header, row))
+            row["url"] = urljoin(url, row["url"])
+            yield row
+
+    def list_xls_urls(self, start_year=2000, end_year=2021):
+        # TODO: get URLs for other formats (such as .zip)
+        anos_censo = (1980, 1991, 2000, 2010, 2022)
+        urls = {}
+        for ano in range(start_year, end_year + 1):
+            urls[ano] = {}
+            if ano not in anos_censo:  # Estimativa
+                url = f"https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_{ano}/"
+                for row in self.parse_html_table_list(url):
+                    if not row["url"].endswith(".xls") or Path(row["url"]).name.startswith("serie"):
+                        continue
+                    urls[ano][row["date"]] = row["url"]
+            else:
+                url = f"https://ftp.ibge.gov.br/Censos/Censo_Demografico_{ano}/"
+                # TODO: implementar o restante
+        return urls
 
 
 class CustomIntegerField(rows.fields.IntegerField):
@@ -111,7 +135,7 @@ if __name__ == "__main__":
         if not path.exists():
             path.mkdir(parents=True)
 
-    # This dict must be updated using `list_xls_urls()`
+    # This dict must be updated using `IbgeScraper.list_xls_urls()`
     urls = {
         2012: {
             "2017-06-14": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2012/estimativa_2012_TCU_20170614.xls",
@@ -149,6 +173,9 @@ if __name__ == "__main__":
         2021: {
             "2023-07-10": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2021/POP2021_20230710.xls",
             "2021-08-27": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2021/estimativa_dou_2021.xls",
+        },
+        2022: {
+            "2023-06-22": "https://ftp.ibge.gov.br/Censos/Censo_Demografico_2022/Previa_da_Populacao/POP2022_Municipios_20230622.xls",
         },
     }
     for year, year_data in urls.items():
