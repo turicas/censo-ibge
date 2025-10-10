@@ -17,7 +17,7 @@ def parse_file(filename):
             if started:
                 objs.append((page_number, obj))
 
-    header = "state,state_ibge_code,city_ibge_code,city,estimated_population".split(",")
+    header = "uf,codigo_uf,codigo,municipio,populacao".split(",")
     sort = lambda obj: (obj[0], obj[1].y0, obj[1].x0)
     objs.sort(key=sort)
     for key, group in groupby(objs, key=lambda obj: (obj[0], obj[1].y0)):
@@ -25,8 +25,8 @@ def parse_file(filename):
         data = [obj.text.strip() for page, obj in group if obj.text.strip()]
         assert len(data) == 5
         row = dict(zip(header, data))
-        row["state_ibge_code"] = int(row["state_ibge_code"])
-        row["estimated_population"] = int(row["estimated_population"].replace(".", ""))
+        row["codigo_uf"] = int(row["codigo_uf"])
+        row["populacao"] = int(row["populacao"].replace(".", ""))
         yield row
 
 
