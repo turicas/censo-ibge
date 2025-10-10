@@ -1,3 +1,4 @@
+import unicodedata
 from ftplib import FTP
 from pathlib import Path
 from unicodedata import normalize
@@ -69,10 +70,6 @@ class CustomIntegerField(rows.fields.IntegerField):
         return super().deserialize(value)
 
 
-def to_ascii(text):
-    return normalize("NFKD", text).encode("ascii", errors="ignore").decode("ascii")
-
-
 def download_ftp_file(url, output_filename, skip_if_downloaded=False):
     if skip_if_downloaded and Path(output_filename).exists():
         return
@@ -89,23 +86,44 @@ def download_ftp_file(url, output_filename, skip_if_downloaded=False):
     server.quit()
     return filename
 
+def normaliza(texto):
+    "Remove acentos, espaços em branco e coloca para minúsculas"
+    return normalize("NFKD", texto).encode("ascii", errors="ignore").decode("ascii").strip().lower()
+
 
 def convert_file(input_filename, output_filename):
     book = xlrd.open_workbook(input_filename, formatting_info=True)
-    sheet = book.sheet_by_name("Municípios")
+    selected_sheet = None
+    sheet_names = book.sheet_names()
+    for sheet_name in sheet_names:
+        normalized = normaliza(sheet_name)
+        if normalized == "municipios":
+            selected_sheet = sheet_name
+            break
+    if selected_sheet is None:
+        raise RuntimeError(f"Aba 'Municípios' não encontrada na planilha (existentes: {', '.join(sheet_names)})")
+    sheet = book.sheet_by_name(selected_sheet)
     column_uf = sheet.col(0)
     for start_row, cell in enumerate(column_uf):
         if str(cell.value or "").strip() == "UF":
             break
+
+    header = [normaliza(cell.value) for cell in sheet.row(start_row)]
+    force_types = {
+        "cod_uf": rows.fields.TextField,
+        "cod_munic": rows.fields.TextField,
+    }
+    tem_populacao_estimada = "populacao estimada" in header
+    if tem_populacao_estimada:
+        force_types["populacao_estimada"] = CustomIntegerField
+    else:  # Censo 2022 não tem população estimada
+        force_types["populacao"] = CustomIntegerField
+
     table = rows.import_from_xls(
         input_filename,
-        sheet_name="Municípios",
+        sheet_name=selected_sheet,
         start_row=start_row,
-        force_types={
-            "cod_uf": rows.fields.TextField,
-            "cod_munic": rows.fields.TextField,
-            "populacao_estimada": CustomIntegerField,
-        },
+        force_types=force_types,
     )
     result = []
     for row in table:
@@ -114,14 +132,14 @@ def convert_file(input_filename, output_filename):
             break
         result.append(
             {
-                "state": row.uf,
-                "state_ibge_code": row.cod_uf,
-                "city_ibge_code": f"{row.cod_uf}{row.cod_munic}",
-                "city": row.nome_do_municipio.replace("*", "").strip(),
-                "estimated_population": row.populacao_estimada,
+                "uf": row.uf,
+                "codigo_uf": row.cod_uf,
+                "codigo_municipio": f"{row.cod_uf}{row.cod_munic}",
+                "municipio": row.nome_do_municipio.replace("*", "").strip(),
+                "populacao": row.populacao_estimada if tem_populacao_estimada else row.populacao,
             }
         )
-    result.sort(key=lambda row: (row["state"], to_ascii(row["city"])))
+    result.sort(key=lambda row: (row["uf"], normaliza(row["municipio"])))
     writer = rows.utils.CsvLazyDictWriter(output_filename)
     for row in result:
         writer.writerow(row)
@@ -171,17 +189,24 @@ if __name__ == "__main__":
             "2020-08-27": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2020/estimativa_dou_2020.xls",
         },
         2021: {
-            "2023-07-10": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2021/POP2021_20230710.xls",
+            "2024-06-24": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2021/POP2021_20240624.xls",
             "2021-08-27": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2021/estimativa_dou_2021.xls",
         },
         2022: {
             "2023-06-22": "https://ftp.ibge.gov.br/Censos/Censo_Demografico_2022/Previa_da_Populacao/POP2022_Municipios_20230622.xls",
         },
+        2024: {
+            "2024-11-01": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2024/POP2024_20241101.xls",
+            "2024-12-30": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2024/POP2024_20241230.xls",
+        },
+        2025: {
+            "2025-09-01": "https://ftp.ibge.gov.br/Estimativas_de_Populacao/Estimativas_2025/estimativa_dou_2025.xls",
+        },
     }
     for year, year_data in urls.items():
         for release_date, url in year_data.items():
             download_filename = DOWNLOAD_PATH / Path(url).name
-            output_filename = OUTPUT_PATH / f"populacao-estimada-{year}_{release_date}.csv"
+            output_filename = OUTPUT_PATH / f"populacao-{year}_{release_date}.csv"
 
             print(f"Downloading {url} to {download_filename}")
             download_ftp_file(url, download_filename, skip_if_downloaded=True)
